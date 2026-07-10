@@ -1022,6 +1022,7 @@
                 updateOperatives();
                 updateCombinedHashrate();
                 updateOddsDisplay();
+                if (toggleCK.checked) fetchAll();
             });
 
             togglePP.addEventListener("change", function() {
@@ -1035,6 +1036,7 @@
                 updateOperatives();
                 updateCombinedHashrate();
                 updateOddsDisplay();
+                if (togglePP.checked) fetchAll();
             });
         })();
 
@@ -1114,8 +1116,16 @@
 
         // ===== FORMATTING HELPERS =====
 
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, function(c) {
+                return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+            });
+        }
+
         function formatHashrate(hps) {
-            if (hps == null || isNaN(hps)) return "--";
+            if (hps == null || hps === "") return "--";
+            hps = Number(hps);
+            if (isNaN(hps)) return "--";
             if (hps >= 1e15) return (hps / 1e15).toFixed(2) + " PH/s";
             if (hps >= 1e12) return (hps / 1e12).toFixed(2) + " TH/s";
             if (hps >= 1e9) return (hps / 1e9).toFixed(2) + " GH/s";
@@ -1125,7 +1135,9 @@
         }
 
         function formatDifficulty(d) {
-            if (d == null || isNaN(d)) return "--";
+            if (d == null || d === "") return "--";
+            d = Number(d);
+            if (isNaN(d)) return "--";
             if (d >= 1e15) return (d / 1e15).toFixed(2) + "P";
             if (d >= 1e12) return (d / 1e12).toFixed(2) + "T";
             if (d >= 1e9) return (d / 1e9).toFixed(2) + "G";
@@ -1319,7 +1331,7 @@
             var expectedSeconds = (difficulty * twoTo32) / combinedHashrate;
             var expectedYears = expectedSeconds / (365.25 * 24 * 3600);
             var probPerBlock = combinedHashrate / (difficulty * twoTo32) * 600; // prob per ~10min block
-            var portalYear = 2026 - expectedYears;
+            var portalYear = new Date().getFullYear() - expectedYears;
             var universeMultiple = expectedYears / AGE_OF_UNIVERSE;
 
             return {
@@ -1335,16 +1347,17 @@
         // ===== FIND ERA =====
 
         function findEra(portalYear) {
-            // Find which milestone era the portal year falls into
+            // Find which milestone era the portal year falls into:
+            // the latest milestone that is at or before the portal year
             if (portalYear < MILESTONES[0].year) {
                 return { milestone: null, beforeUniverse: true };
             }
             for (var i = MILESTONES.length - 1; i >= 0; i--) {
-                if (portalYear <= MILESTONES[i].year) {
+                if (portalYear >= MILESTONES[i].year) {
                     return { milestone: MILESTONES[i], beforeUniverse: false };
                 }
             }
-            return { milestone: MILESTONES[MILESTONES.length - 1], beforeUniverse: false };
+            return { milestone: MILESTONES[0], beforeUniverse: false };
         }
 
         // ===== TIMELINE RENDERING (SNAKE) =====
@@ -1658,7 +1671,7 @@
                 var rawName = w.workername || "";
                 var dotIdx = rawName.indexOf(".");
                 if (dotIdx !== -1) rawName = rawName.substring(dotIdx + 1);
-                var name = isGenericName(rawName) ? getCodename("ck", ckIdx) : rawName.toUpperCase();
+                var name = isGenericName(rawName) ? getCodename("ck", ckIdx) : escapeHtml(rawName.toUpperCase());
                 ckIdx++;
 
                 var clearanceText = sc.clearance || "";
@@ -1673,7 +1686,7 @@
                     + '<span class="pool-badge ck">CK</span>'
                     + '</div>'
                     + '<div class="card-stats">'
-                    + '<div class="row"><span class="k">Hashrate (1hr)</span><span>' + (status === "online" ? (w.hashrate1hr || "--") : "0") + '</span></div>'
+                    + '<div class="row"><span class="k">Hashrate (1hr)</span><span>' + (status === "online" ? escapeHtml(w.hashrate1hr || "--") : "0") + '</span></div>'
                     + '<div class="row"><span class="k">Best Share</span><span>' + formatDifficulty(w.bestshare) + '</span></div>'
                     + '<div class="row"><span class="k">Last Contact</span><span>' + timeAgo(w.lastshare) + '</span></div>'
                     + '</div>'
@@ -1696,7 +1709,7 @@
                 if (status !== "online") offlineCount++;
                 var sc = STATUS_CFG[status];
                 var rawName = w.name || w.sessionId || "";
-                var name = isGenericName(rawName) ? getCodename("pp", ppIdx) : rawName.toUpperCase();
+                var name = isGenericName(rawName) ? getCodename("pp", ppIdx) : escapeHtml(rawName.toUpperCase());
                 ppIdx++;
 
                 var clearanceText = sc.clearance || "";
@@ -1776,6 +1789,14 @@
 
         fetchAll();
         setInterval(fetchAll, REFRESH_INTERVAL);
+
+        // Re-render the snake timeline when the window is resized (node
+        // positions and the SVG path depend on the container width)
+        var resizeTimer = null;
+        window.addEventListener("resize", function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(updateOddsDisplay, 250);
+        });
     </script>
 </body>
 </html>

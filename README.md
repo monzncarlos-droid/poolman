@@ -28,17 +28,27 @@ The fun one. A three-panel command center themed as a mashup of *Rick and Morty*
 
 ## Quick Start
 
-```bash
-pip install -r requirements.txt
-```
-
 Create a `.env` file:
 ```
 BTC_ADDRESS=your_btc_address_here
 ```
 
-Run:
+Then launch from the repo root — the script creates a venv and installs dependencies on first run. One server hosts both dashboards; the argument just picks which one to open in your browser:
 ```bash
+.\run.ps1       # Windows — opens the lab dashboard when the server is up
+.\run.ps1 pi    # ...open the Pi dashboard instead
+.\run.ps1 kiosk # ...fullscreen Chrome/Edge kiosk on /lab, server detached
+.\run.ps1 stop  # ...stop a running/detached server
+.\run.ps1 none  # ...server only, no browser
+
+./run.sh        # Linux / macOS / Pi — server only (the kiosk opens its own browser)
+./run.sh lab    # ...also open the lab dashboard
+./run.sh pi     # ...also open the Pi dashboard
+```
+
+Or manually:
+```bash
+pip install -r requirements.txt
 python app.py
 ```
 
@@ -52,6 +62,7 @@ templates/
   index.html        — Pi dashboard (inline CSS/JS)
   lab.html          — Lab dashboard (inline CSS/JS)
 requirements.txt    — Python dependencies (Flask, requests)
+run.sh / run.ps1    — quick launch scripts (venv + deps + server)
 poolman.service     — systemd unit for Pi auto-start
 start-kiosk.sh      — Chromium kiosk launcher
 .env                — BTC_ADDRESS (not committed, obviously)

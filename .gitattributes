@@ -1,0 +1,4 @@
+# These files execute on the Pi — CRLF breaks them, keep LF regardless of
+# the Windows checkout's core.autocrlf setting
+*.sh text eol=lf
+*.service text eol=lf

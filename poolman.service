@@ -7,7 +7,8 @@ Wants=network-online.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/poolman
-Environment=BTC_ADDRESS=YOUR_ADDRESS
+# BTC_ADDRESS is read from the .env file in WorkingDirectory (via python-dotenv).
+# Do not set it here with Environment= — that would override the .env value.
 ExecStart=/usr/bin/python3 app.py
 Restart=always
 RestartSec=5

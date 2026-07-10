@@ -8,6 +8,13 @@ Poolman is a Bitcoin solo mining dashboard ("TangNet Mining Ops") — a Flask ap
 
 ## Running the App
 
+Quick launch from the repo root (creates venv + installs deps on first run). The server hosts both dashboards; the argument picks which page to auto-open in a browser:
+```bash
+.\run.ps1 [lab|pi|kiosk|none|stop]   # Windows, defaults to lab; kiosk detaches the server
+./run.sh [lab|pi]                    # Linux / macOS / Pi, defaults to server-only
+```
+
+Or manually:
 ```bash
 pip install -r requirements.txt
 python app.py

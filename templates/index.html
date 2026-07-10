@@ -475,6 +475,7 @@
                 }
                 applyPoolVisibility();
                 updateCombined();
+                if (toggleCK.checked) fetchAll();
             });
 
             togglePP.addEventListener("change", function() {
@@ -486,6 +487,7 @@
                 }
                 applyPoolVisibility();
                 updateCombined();
+                if (togglePP.checked) fetchAll();
             });
         })();
 
@@ -558,8 +560,17 @@
 
         // --- Formatting helpers ---
 
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, function(c) {
+                return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+            });
+        }
+
         function formatHashrate(hps) {
-            if (hps == null || isNaN(hps)) return "--";
+            if (hps == null || hps === "") return "--";
+            hps = Number(hps);
+            if (isNaN(hps)) return "--";
+            if (hps >= 1e15) return (hps / 1e15).toFixed(2) + " PH/s";
             if (hps >= 1e12) return (hps / 1e12).toFixed(2) + " TH/s";
             if (hps >= 1e9) return (hps / 1e9).toFixed(2) + " GH/s";
             if (hps >= 1e6) return (hps / 1e6).toFixed(2) + " MH/s";
@@ -568,7 +579,9 @@
         }
 
         function formatDifficulty(d) {
-            if (d == null || isNaN(d)) return "--";
+            if (d == null || d === "") return "--";
+            d = Number(d);
+            if (isNaN(d)) return "--";
             if (d >= 1e15) return (d / 1e15).toFixed(2) + "P";
             if (d >= 1e12) return (d / 1e12).toFixed(2) + "T";
             if (d >= 1e9) return (d / 1e9).toFixed(2) + "G";
@@ -664,9 +677,11 @@
             });
         }
 
-        // Restore tab from URL hash
-        var initTab = location.hash.replace("#", "");
-        if (initTab && document.getElementById("tab-" + initTab)) {
+        // Restore tab from URL hash (never into a tab whose pool is disabled)
+        var initTab = location.hash.replace("#", "").replace(/[^a-z]/g, "");
+        var initBtn = initTab ? document.querySelector('.tab-btn[data-tab="' + initTab + '"]') : null;
+        if (initTab && document.getElementById("tab-" + initTab)
+            && (!initBtn || !initBtn.classList.contains("pool-disabled"))) {
             switchTab(initTab);
         }
 
@@ -707,18 +722,19 @@
             for (var i = 0; i < ckKeys.length; i++) {
                 var entry = knownCKWorkers[ckKeys[i]];
                 var w = entry.data;
-                var online = entry.isLive && isOnline(w.lastshare);
+                var status = entry.isLive ? getWorkerStatus(w.lastshare) : "offline";
+                var online = status === "online";
                 var rawName = w.workername || "";
                 var dotIdx = rawName.indexOf(".");
                 if (dotIdx !== -1) rawName = rawName.substring(dotIdx + 1);
-                var name = isGenericName(rawName) ? getCodename("ck", i) : rawName;
+                var name = isGenericName(rawName) ? getCodename("ck", i) : escapeHtml(rawName);
                 html += "<tr>"
                     + "<td>" + name + "</td>"
-                    + "<td>" + (online ? (w.hashrate1m || "--") : "--") + "</td>"
-                    + "<td>" + (online ? (w.hashrate1hr || "--") : "--") + "</td>"
-                    + "<td>" + (online ? (w.hashrate1d || "--") : "--") + "</td>"
+                    + "<td>" + (online ? escapeHtml(w.hashrate1m || "--") : "--") + "</td>"
+                    + "<td>" + (online ? escapeHtml(w.hashrate1hr || "--") : "--") + "</td>"
+                    + "<td>" + (online ? escapeHtml(w.hashrate1d || "--") : "--") + "</td>"
                     + "<td>" + formatDifficulty(w.bestshare) + "</td>"
-                    + "<td>" + statusDot(online) + "</td>"
+                    + "<td>" + statusDot(status) + "</td>"
                     + "</tr>";
             }
             tbody.innerHTML = html;
@@ -757,15 +773,16 @@
             for (var i = 0; i < ppKeys.length; i++) {
                 var entry = knownPPWorkers[ppKeys[i]];
                 var w = entry.data;
-                var online = entry.isLive;
+                var status = entry.isLive ? getWorkerStatus(w.lastSeen) : "offline";
+                var online = status === "online";
                 var rawName = w.name || w.sessionId || "";
-                var name = isGenericName(rawName) ? getCodename("pp", i) : rawName;
+                var name = isGenericName(rawName) ? getCodename("pp", i) : escapeHtml(rawName);
                 html += "<tr>"
                     + "<td>" + name + "</td>"
                     + "<td>" + (online ? formatHashrate(w.hashRate) : "--") + "</td>"
                     + "<td>" + formatDifficulty(w.bestDifficulty) + "</td>"
                     + "<td>" + timeAgo(w.lastSeen) + "</td>"
-                    + "<td>" + statusDot(online) + "</td>"
+                    + "<td>" + statusDot(status) + "</td>"
                     + "</tr>";
             }
             tbody.innerHTML = html;
@@ -853,18 +870,19 @@
                 for (var i = 0; i < ckKeys.length; i++) {
                     var entry = knownCKWorkers[ckKeys[i]];
                     var w = entry.data;
-                    var online = entry.isLive && isOnline(w.lastshare);
+                    var status = entry.isLive ? getWorkerStatus(w.lastshare) : "offline";
+                    var online = status === "online";
                     var rawName = w.workername || "";
                     var dotIdx = rawName.indexOf(".");
                     if (dotIdx !== -1) rawName = rawName.substring(dotIdx + 1);
-                    var name = isGenericName(rawName) ? getCodename("ck", i) : rawName;
+                    var name = isGenericName(rawName) ? getCodename("ck", i) : escapeHtml(rawName);
                     html += "<tr>"
                         + '<td><span class="pool-badge ck">CK</span></td>'
                         + "<td>" + name + "</td>"
-                        + "<td>" + (online ? (w.hashrate1hr || "--") : "--") + "</td>"
+                        + "<td>" + (online ? escapeHtml(w.hashrate1hr || "--") : "--") + "</td>"
                         + "<td>" + formatDifficulty(w.bestshare) + "</td>"
                         + "<td>" + timeAgo(w.lastshare) + "</td>"
-                        + "<td>" + statusDot(online) + "</td>"
+                        + "<td>" + statusDot(status) + "</td>"
                         + "</tr>";
                 }
             }
@@ -875,16 +893,17 @@
                 for (var i = 0; i < ppKeys.length; i++) {
                     var entry = knownPPWorkers[ppKeys[i]];
                     var w = entry.data;
-                    var online = entry.isLive;
+                    var status = entry.isLive ? getWorkerStatus(w.lastSeen) : "offline";
+                    var online = status === "online";
                     var rawName = w.name || w.sessionId || "";
-                    var name = isGenericName(rawName) ? getCodename("pp", i) : rawName;
+                    var name = isGenericName(rawName) ? getCodename("pp", i) : escapeHtml(rawName);
                     html += "<tr>"
                         + '<td><span class="pool-badge pp">PP</span></td>'
                         + "<td>" + name + "</td>"
                         + "<td>" + (online ? formatHashrate(w.hashRate) : "--") + "</td>"
                         + "<td>" + formatDifficulty(w.bestDifficulty) + "</td>"
                         + "<td>" + timeAgo(w.lastSeen) + "</td>"
-                        + "<td>" + statusDot(online) + "</td>"
+                        + "<td>" + statusDot(status) + "</td>"
                         + "</tr>";
                 }
             }
