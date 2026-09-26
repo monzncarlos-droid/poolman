@@ -159,6 +159,7 @@
         }
         .pool-badge.ck { background: #1a2a1a; color: #33ff33; }
         .pool-badge.pp { background: #1a1a2a; color: #6699ff; }
+        .pool-badge.lab { background: #162c2a; color: #59e5c1; }
 
         /* Status dots */
         .status-dot {
@@ -302,6 +303,27 @@
         <button class="tab-btn active" data-tab="all">All</button>
         <button class="tab-btn" data-tab="ckpool">CKPool</button>
         <button class="tab-btn" data-tab="publicpool">Public Pool</button>
+        <button class="tab-btn" data-tab="btcpowlab">BTC PoW Lab</button>
+    </div>
+
+    <!-- Tab: BTC PoW Lab -->
+    <div class="tab-pane" id="tab-btcpowlab">
+        <div class="pool-section">
+            <div class="pool-header">BTC PoW Lab (Hybrid Solo)</div>
+            <div class="summary" id="lab-summary">
+                <div class="stat"><div class="label">Hashrate (5m)</div><div class="value" id="lab-hr5m">--</div></div>
+                <div class="stat"><div class="label">Hashrate (1hr)</div><div class="value" id="lab-hr1h">--</div></div>
+                <div class="stat"><div class="label">Hashrate (24hr)</div><div class="value" id="lab-hr24h">--</div></div>
+                <div class="stat"><div class="label">Workers</div><div class="value" id="lab-workers">--</div></div>
+                <div class="stat"><div class="label">Accepted Shares</div><div class="value" id="lab-accepted">--</div></div>
+                <div class="stat"><div class="label">Best Share</div><div class="value" id="lab-best">--</div></div>
+            </div>
+            <div id="lab-error" class="error-msg" style="display:none;"></div>
+            <table class="worker-table" id="lab-worker-table">
+                <thead><tr><th>Worker</th><th>HR 5m</th><th>HR 1hr</th><th>Accepted</th><th>Last Seen</th><th>Status</th></tr></thead>
+                <tbody id="lab-worker-body"></tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Tab: All (Combined) -->
@@ -397,6 +419,10 @@
                 <label for="toggle-publicpool">Public Pool (Bitaxe)</label>
                 <input type="checkbox" id="toggle-publicpool" checked>
             </div>
+            <div class="settings-row">
+                <label for="toggle-btcpowlab">BTC PoW Lab (Hybrid Solo)</label>
+                <input type="checkbox" id="toggle-btcpowlab" checked>
+            </div>
             <button class="settings-close" id="settings-close">[CLOSE]</button>
         </div>
     </div>
@@ -409,15 +435,17 @@
         // Store latest data for combined view
         var latestCK = null;
         var latestPP = null;
+        var latestLab = null;
 
         // Worker memory — keeps dropped workers visible as offline
         var knownCKWorkers = {};
         var knownPPWorkers = {};
+        var knownLabWorkers = {};
         var GHOST_EXPIRY = 3600000;
 
         // --- Settings (localStorage) ---
         var SETTINGS_KEY = "poolman_settings";
-        var DEFAULT_SETTINGS = { pools: { ckpool: true, publicpool: true } };
+        var DEFAULT_SETTINGS = { pools: { ckpool: true, publicpool: true, btcpowlab: true } };
 
         function loadSettings() {
             try {
@@ -451,10 +479,12 @@
             var btnClose = document.getElementById("settings-close");
             var toggleCK = document.getElementById("toggle-ckpool");
             var togglePP = document.getElementById("toggle-publicpool");
+            var toggleLab = document.getElementById("toggle-btcpowlab");
 
             btnOpen.addEventListener("click", function() {
                 toggleCK.checked = isPoolEnabled("ckpool");
                 togglePP.checked = isPoolEnabled("publicpool");
+                toggleLab.checked = isPoolEnabled("btcpowlab");
                 overlay.classList.add("open");
             });
 
@@ -489,14 +519,28 @@
                 updateCombined();
                 if (togglePP.checked) fetchAll();
             });
+
+            toggleLab.addEventListener("change", function() {
+                currentSettings.pools.btcpowlab = toggleLab.checked;
+                saveSettings(currentSettings);
+                if (!toggleLab.checked) {
+                    knownLabWorkers = {};
+                    latestLab = null;
+                }
+                applyPoolVisibility();
+                updateCombined();
+                if (toggleLab.checked) fetchAll();
+            });
         })();
 
         // --- Pool visibility ---
         function applyPoolVisibility() {
             var ckBtn = document.querySelector('.tab-btn[data-tab="ckpool"]');
             var ppBtn = document.querySelector('.tab-btn[data-tab="publicpool"]');
+            var labBtn = document.querySelector('.tab-btn[data-tab="btcpowlab"]');
             if (ckBtn) ckBtn.classList.toggle("pool-disabled", !isPoolEnabled("ckpool"));
             if (ppBtn) ppBtn.classList.toggle("pool-disabled", !isPoolEnabled("publicpool"));
+            if (labBtn) labBtn.classList.toggle("pool-disabled", !isPoolEnabled("btcpowlab"));
 
             // If active tab's pool was disabled, switch to "all"
             var activeBtn = document.querySelector(".tab-btn.active");
@@ -554,6 +598,23 @@
                 ghosts.sort(function(a, b) { return knownPPWorkers[a].lastApiTime - knownPPWorkers[b].lastApiTime; });
                 for (var i = 0; i < Math.min(newCount, ghosts.length); i++) {
                     delete knownPPWorkers[ghosts[i]];
+                }
+            }
+        }
+
+        function mergeLabWorkers(workers) {
+            var seen = {};
+            var now = Date.now();
+            for (var i = 0; i < workers.length; i++) {
+                var w = workers[i];
+                var key = w.name || "lab-" + i;
+                seen[key] = true;
+                knownLabWorkers[key] = { data: w, isLive: true, lastApiTime: now };
+            }
+            for (var key in knownLabWorkers) {
+                if (!seen[key]) {
+                    knownLabWorkers[key].isLive = false;
+                    if (now - knownLabWorkers[key].lastApiTime > GHOST_EXPIRY) delete knownLabWorkers[key];
                 }
             }
         }
@@ -790,6 +851,46 @@
             updateCombined();
         }
 
+        function updateBTCPoWLab(data) {
+            latestLab = data;
+            var errEl = document.getElementById("lab-error");
+            var summaryEl = document.getElementById("lab-summary");
+            var tableEl = document.getElementById("lab-worker-table");
+            if (data.error) {
+                errEl.textContent = data.error;
+                errEl.style.display = "block";
+                summaryEl.style.display = "none";
+                tableEl.style.display = "none";
+                updateCombined();
+                return;
+            }
+            errEl.style.display = "none";
+            summaryEl.style.display = "";
+            tableEl.style.display = "";
+            setText("lab-hr5m", formatHashrate(data.hashrate_5m_hs));
+            setText("lab-hr1h", formatHashrate(data.hashrate_1h_hs));
+            setText("lab-hr24h", formatHashrate(data.hashrate_24h_hs));
+            setText("lab-workers", formatNumber(data.workers_online) + " / " + formatNumber(data.workers_total));
+            setText("lab-accepted", formatNumber(data.accepted_shares));
+            setText("lab-best", formatDifficulty(data.best_share_difficulty));
+            mergeLabWorkers(data.workers || []);
+            var keys = Object.keys(knownLabWorkers);
+            var html = "";
+            for (var i = 0; i < keys.length; i++) {
+                var entry = knownLabWorkers[keys[i]];
+                var w = entry.data;
+                var status = entry.isLive ? (w.status === "online" ? "online" : getWorkerStatus(w.last_share_at)) : "offline";
+                html += "<tr><td>" + escapeHtml(w.name || getCodename("lab", i)) + "</td>"
+                    + "<td>" + formatHashrate(w.hashrate_5m_hs) + "</td>"
+                    + "<td>" + formatHashrate(w.hashrate_1h_hs) + "</td>"
+                    + "<td>" + formatNumber(w.accepted) + "</td>"
+                    + "<td>" + timeAgo(w.last_share_at) + "</td>"
+                    + "<td>" + statusDot(status) + "</td></tr>";
+            }
+            document.getElementById("lab-worker-body").innerHTML = html;
+            updateCombined();
+        }
+
         // --- Agent codenames ---
 
         var CODENAMES = [
@@ -839,11 +940,13 @@
             var settings = loadSettings();
             var ck = (settings.pools.ckpool !== false) ? (latestCK || {}) : {};
             var pp = (settings.pools.publicpool !== false) ? (latestPP || {}) : {};
+            var lab = (settings.pools.btcpowlab !== false) ? (latestLab || {}) : {};
 
             // Total workers
             var ckCount = (!ck.error && ck.workers) ? Number(ck.workers) : 0;
             var ppCount = (!pp.error && pp.workersCount) ? Number(pp.workersCount) : 0;
-            setText("all-workers", formatNumber(ckCount + ppCount));
+            var labCount = (!lab.error && lab.workers_total) ? Number(lab.workers_total) : 0;
+            setText("all-workers", formatNumber(ckCount + ppCount + labCount));
 
             // Combined hashrate: parse CKPool string + sum PP worker hashRates
             var totalHR = 0;
@@ -854,6 +957,7 @@
                     if (!isNaN(hr)) totalHR += hr;
                 }
             }
+            if (!lab.error && lab.hashrate_1h_hs) totalHR += Number(lab.hashrate_1h_hs) || 0;
             setText("all-combined-hr", totalHR > 0 ? formatHashrate(totalHR) : "--");
 
             // Best share from each pool
@@ -908,6 +1012,22 @@
                 }
             }
 
+            if (settings.pools.btcpowlab !== false) {
+                var labKeys = Object.keys(knownLabWorkers);
+                for (var i = 0; i < labKeys.length; i++) {
+                    var entry = knownLabWorkers[labKeys[i]];
+                    var w = entry.data;
+                    var status = entry.isLive ? (w.status === "online" ? "online" : getWorkerStatus(w.last_share_at)) : "offline";
+                    html += "<tr>"
+                        + '<td><span class="pool-badge lab">LAB</span></td>'
+                        + "<td>" + escapeHtml(w.name || getCodename("lab", i)) + "</td>"
+                        + "<td>" + formatHashrate(w.hashrate_1h_hs) + "</td>"
+                        + "<td>" + formatDifficulty(w.best_share_difficulty) + "</td>"
+                        + "<td>" + timeAgo(w.last_share_at) + "</td>"
+                        + "<td>" + statusDot(status) + "</td></tr>";
+                }
+            }
+
             tbody.innerHTML = html;
         }
 
@@ -940,6 +1060,13 @@
                     .then(function(r) { return r.json(); })
                     .then(updatePublicPool)
                     .catch(function() { updatePublicPool({error: "Fetch failed"}); });
+            }
+
+            if (settings.pools.btcpowlab !== false) {
+                fetch("/api/btcpowlab")
+                    .then(function(r) { return r.json(); })
+                    .then(updateBTCPoWLab)
+                    .catch(function() { updateBTCPoWLab({error: "Fetch failed"}); });
             }
 
             fetch("/api/network")

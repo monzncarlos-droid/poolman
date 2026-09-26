@@ -17,6 +17,7 @@ if BTC_ADDRESS == "YOUR_ADDRESS":
 CKPOOL_URL = f"https://solo.ckpool.org/users/{BTC_ADDRESS}"
 PUBLICPOOL_URL = f"https://public-pool.io:40557/api/client/{BTC_ADDRESS}"
 PUBLICPOOL_NETWORK_URL = "https://public-pool.io:40557/api/network"
+BTCPOWLAB_URL = f"https://btcpowlab-pool.com/public/v1/miner/{BTC_ADDRESS}"
 
 # Shared upstream cache: multiple open dashboards (Pi kiosk + lab) poll every 30s
 # each — serve them from one upstream fetch instead of hammering the pools.
@@ -64,6 +65,18 @@ def fetch_publicpool():
         return {"error": f"Public Pool bad JSON: {e}"}
 
 
+def fetch_btcpowlab():
+    """Fetch the public BTC PoW Lab miner snapshot."""
+    try:
+        resp = requests.get(BTCPOWLAB_URL, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        return {"error": f"BTC PoW Lab unreachable: {e}"}
+    except ValueError as e:
+        return {"error": f"BTC PoW Lab bad JSON: {e}"}
+
+
 def fetch_network():
     """Fetch Bitcoin network info from Public Pool."""
     try:
@@ -94,6 +107,11 @@ def api_ckpool():
 @app.route("/api/publicpool")
 def api_publicpool():
     return jsonify(cached("publicpool", fetch_publicpool))
+
+
+@app.route("/api/btcpowlab")
+def api_btcpowlab():
+    return jsonify(cached("btcpowlab", fetch_btcpowlab))
 
 
 @app.route("/api/network")

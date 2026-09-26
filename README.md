@@ -5,7 +5,7 @@
 > *"Listen Morty, mining Bitcoin solo is like trying to find a specific grain of sand on every beach in the multiverse. But we're doing it anyway because we're not cowards."*
 > — Rick Sanchez, C-137
 
-A Bitcoin solo mining dashboard for the beautifully delusional. Aggregates live stats from [CKPool](https://solo.ckpool.org) and [Public Pool](https://public-pool.io) into a terminal-style command center that makes your mass of 500 GH/s miners feel like an interdimensional covert operation. Pools can be individually toggled on/off via a settings modal — settings persist in `localStorage` and sync across both dashboards.
+A Bitcoin solo mining dashboard for the beautifully delusional. Aggregates live stats from [CKPool](https://solo.ckpool.org), [Public Pool](https://public-pool.io), and [BTC PoW Lab](https://btcpowlab-pool.com) into a terminal-style command center that makes your mass of 500 GH/s miners feel like an interdimensional covert operation. Pools can be individually toggled on/off via a settings modal — settings persist in `localStorage` and sync across both dashboards.
 
 ![Operation TangNet Lab Dashboard](screenshot.png)
 
@@ -70,14 +70,15 @@ start-kiosk.sh      — Chromium kiosk launcher
 
 **Data sources** (proxied through Flask):
 - CKPool: `https://solo.ckpool.org/users/{BTC_ADDRESS}`
+- BTC PoW Lab: `https://btcpowlab-pool.com/public/v1/miner/{BTC_ADDRESS}`
 - Public Pool: `https://public-pool.io:40557/api/client/{BTC_ADDRESS}`
 - Network info: `https://public-pool.io:40557/api/network`
 
-**API routes:** `GET /api/ckpool` `GET /api/publicpool` `GET /api/network`
+**API routes:** `GET /api/ckpool` `GET /api/publicpool` `GET /api/btcpowlab` `GET /api/network`
 
-No database. No auth. No WebSockets. Just three fetch calls on a 30-second loop, a `localStorage` settings object, and a mass of CSS that would make a design system engineer cry.
+No database. No auth. No WebSockets. Just four fetch calls on a 30-second loop, a `localStorage` settings object, and a mass of CSS that would make a design system engineer cry.
 
-**Settings:** Stored in `localStorage` under `poolman_settings`. Shape: `{ pools: { ckpool: true, publicpool: true } }`. New pool keys auto-default to `true` via merge logic, so adding a pool later is a one-line change.
+**Settings:** Stored in `localStorage` under `poolman_settings`. Shape: `{ pools: { ckpool: true, publicpool: true, btcpowlab: true } }`. New pool keys auto-default to `true` via merge logic, so adding a pool later is a one-line change.
 
 ## Pi Deployment
 
