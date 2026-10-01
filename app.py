@@ -17,7 +17,7 @@ if BTC_ADDRESS == "YOUR_ADDRESS":
 CKPOOL_URL = f"https://solo.ckpool.org/users/{BTC_ADDRESS}"
 PUBLICPOOL_URL = f"https://public-pool.io:40557/api/client/{BTC_ADDRESS}"
 PUBLICPOOL_NETWORK_URL = "https://public-pool.io:40557/api/network"
-BTCPOWLAB_URL = f"https://btcpowlab-pool.com/public/v1/miner/{BTC_ADDRESS}"
+BTCPOWLAB_URL = f"https://btcpowlab-pool.com/public/v1/miner/{BTC_ADDRESS}/summary"
 
 # Shared upstream cache: multiple open dashboards (Pi kiosk + lab) poll every 30s
 # each — serve them from one upstream fetch instead of hammering the pools.

@@ -70,7 +70,7 @@ start-kiosk.sh      — Chromium kiosk launcher
 
 **Data sources** (proxied through Flask):
 - CKPool: `https://solo.ckpool.org/users/{BTC_ADDRESS}`
-- BTC PoW Lab: `https://btcpowlab-pool.com/public/v1/miner/{BTC_ADDRESS}`
+- BTC PoW Lab: `https://btcpowlab-pool.com/public/v1/miner/{BTC_ADDRESS}/summary`
 - Public Pool: `https://public-pool.io:40557/api/client/{BTC_ADDRESS}`
 - Network info: `https://public-pool.io:40557/api/network`
 

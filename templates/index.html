@@ -870,7 +870,7 @@
             setText("lab-hr5m", formatHashrate(data.hashrate_5m_hs));
             setText("lab-hr1h", formatHashrate(data.hashrate_1h_hs));
             setText("lab-hr24h", formatHashrate(data.hashrate_24h_hs));
-            setText("lab-workers", formatNumber(data.workers_online) + " / " + formatNumber(data.workers_total));
+            setText("lab-workers", formatNumber((data.workers || []).length));
             setText("lab-accepted", formatNumber(data.accepted_shares));
             setText("lab-best", formatDifficulty(data.best_share_difficulty));
             mergeLabWorkers(data.workers || []);
@@ -879,11 +879,11 @@
             for (var i = 0; i < keys.length; i++) {
                 var entry = knownLabWorkers[keys[i]];
                 var w = entry.data;
-                var status = entry.isLive ? (w.status === "online" ? "online" : getWorkerStatus(w.last_share_at)) : "offline";
+                var status = entry.isLive ? getWorkerStatus(w.last_share_at) : "offline";
                 html += "<tr><td>" + escapeHtml(w.name || getCodename("lab", i)) + "</td>"
                     + "<td>" + formatHashrate(w.hashrate_5m_hs) + "</td>"
                     + "<td>" + formatHashrate(w.hashrate_1h_hs) + "</td>"
-                    + "<td>" + formatNumber(w.accepted) + "</td>"
+                    + "<td>" + formatNumber(w.accepted_shares) + "</td>"
                     + "<td>" + timeAgo(w.last_share_at) + "</td>"
                     + "<td>" + statusDot(status) + "</td></tr>";
             }
@@ -945,7 +945,7 @@
             // Total workers
             var ckCount = (!ck.error && ck.workers) ? Number(ck.workers) : 0;
             var ppCount = (!pp.error && pp.workersCount) ? Number(pp.workersCount) : 0;
-            var labCount = (!lab.error && lab.workers_total) ? Number(lab.workers_total) : 0;
+            var labCount = (!lab.error && Array.isArray(lab.workers)) ? lab.workers.length : 0;
             setText("all-workers", formatNumber(ckCount + ppCount + labCount));
 
             // Combined hashrate: parse CKPool string + sum PP worker hashRates
@@ -1017,7 +1017,7 @@
                 for (var i = 0; i < labKeys.length; i++) {
                     var entry = knownLabWorkers[labKeys[i]];
                     var w = entry.data;
-                    var status = entry.isLive ? (w.status === "online" ? "online" : getWorkerStatus(w.last_share_at)) : "offline";
+                    var status = entry.isLive ? getWorkerStatus(w.last_share_at) : "offline";
                     html += "<tr>"
                         + '<td><span class="pool-badge lab">LAB</span></td>'
                         + "<td>" + escapeHtml(w.name || getCodename("lab", i)) + "</td>"

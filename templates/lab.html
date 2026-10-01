@@ -1690,7 +1690,7 @@
             } else {
                 dot.className = "status-dot online";
                 setText("lab-hr", formatHashrate(data.hashrate_1h_hs));
-                setText("lab-workers", formatNumber(data.workers_online) + " / " + formatNumber(data.workers_total));
+                setText("lab-workers", formatNumber((data.workers || []).length));
                 setText("lab-accepted", formatNumber(data.accepted_shares));
                 setText("lab-best", formatDifficulty(data.best_share_difficulty));
                 mergeLabWorkers(data.workers || []);
@@ -1823,7 +1823,7 @@
             for (var i = 0; i < labKeys.length; i++) {
                 var entry = knownLabWorkers[labKeys[i]];
                 var w = entry.data;
-                var status = entry.isLive ? (w.status === "online" ? "online" : getWorkerStatus(w.last_share_at)) : "offline";
+                var status = entry.isLive ? getWorkerStatus(w.last_share_at) : "offline";
                 if (status !== "online") offlineCount++;
                 var sc = STATUS_CFG[status];
                 var name = isGenericName(w.name || "") ? getCodename("lab", labIdx) : escapeHtml(String(w.name).toUpperCase());
@@ -1837,7 +1837,7 @@
                     + '<div class="card-top"><span class="codename">' + name + '</span><span class="pool-badge lab">LAB</span></div>'
                     + '<div class="card-stats">'
                     + '<div class="row"><span class="k">Hashrate (1hr)</span><span>' + (status === "online" ? formatHashrate(w.hashrate_1h_hs) : "0") + '</span></div>'
-                    + '<div class="row"><span class="k">Accepted</span><span>' + formatNumber(w.accepted) + '</span></div>'
+                    + '<div class="row"><span class="k">Accepted</span><span>' + formatNumber(w.accepted_shares) + '</span></div>'
                     + '<div class="row"><span class="k">Last Contact</span><span>' + timeAgo(w.last_share_at) + '</span></div>'
                     + '</div><div class="card-footer"><div class="status-indicator"><span class="status-dot ' + sc.dot + '"></span>'
                     + '<span class="clearance ' + sc.clearCls + '">' + sc.label + '</span></div>'
